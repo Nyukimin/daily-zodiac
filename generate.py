@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import json
+import os
 from typing import Dict, Any, List
+
+BASE_PATH = os.environ.get("BASE_PATH", "/daily-zodiac/")
 
 JST = timezone(timedelta(hours=9))
 
@@ -57,20 +60,31 @@ def fallback_one(sign: str, date_str: str, err: Exception) -> Dict[str, Any]:
 def render_html(data: Dict[str, Any]) -> str:
     ja = data.get("sign_ja", data["sign"])
     choices = data.get("choices", [])
-    li = "\n".join([f"  <li>{c}</li>" for c in choices])
+    li = "\n".join([f"      <li>{c}</li>" for c in choices])
 
-    # 入口に戻れる導線を追加（迷子防止）
-    return f"""<p><a href="/daily-zodiac/">← 入口へ</a></p>
-<h1>{ja} / {data["date"]}</h1>
-<p>{data["summary"]}</p>
+    return f"""<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+　<base href="{BASE_PATH}">
+  <title>{ja} / {data["date"]} - 今日の星座占い</title>
+</head>
+<body>
+  <p><a href="./">← 入口へ</a></p>
 
-<h2>選択肢</h2>
-<ol>
+  <h1>{ja} / {data["date"]}</h1>
+  <p>{data["summary"]}</p>
+
+  <h2>選択肢</h2>
+  <ol>
 {li}
-</ol>
+  </ol>
 
-<h2>次の一歩</h2>
-<p>{data["next_step"]}</p>
+  <h2>次の一歩</h2>
+  <p>{data["next_step"]}</p>
+</body>
+</html>
 """
 
 def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
@@ -87,16 +101,26 @@ def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
     )
 
 def write_index(out_root: Path) -> None:
-    # 表示は日本語、リンクは英語スラッグ
     links = "\n".join([
-        f'<li><a href="/daily-zodiac/{s}/">{SIGN_JA.get(s, s)}</a></li>'
+        f'    <li><a href="./{s}/">{SIGN_JA.get(s, s)}</a></li>'
         for s in SIGNS
     ])
 
-    html = f"""<h1>今日の星座占い</h1>
-<ul>
+    html = f"""<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="{BASE_PATH}">
+  <title>今日の星座占い</title>
+</head>
+<body>
+  <h1>今日の星座占い</h1>
+  <ul>
 {links}
-</ul>
+  </ul>
+</body>
+</html>
 """
     (out_root / "index.html").write_text(html, encoding="utf-8")
 
