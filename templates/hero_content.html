@@ -1,42 +1,32 @@
-    <div class="grid gap-5 p-6 sm:p-8">
+    <div class="grid gap-1.5 p-3 sm:p-4 overflow-y-auto">
       <!-- 要約 -->
       <div>
-        <p class="text-xs text-zinc-200/80">要約</p>
-        <p class="mt-1 text-sm leading-relaxed text-zinc-50">{{ data.summary }}</p>
+        <p class="text-[10px] text-zinc-200/80">要約</p>
+        <p class="mt-0.5 text-xs leading-relaxed text-zinc-50">{{ data.summary }}</p>
       </div>
 
       <!-- 選択肢 -->
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div class="grid gap-2 grid-cols-2 sm:grid-cols-3">
         {% for c in data.choices[:3] %}
-        <a href="{{ base_href }}{{ data.sign }}/" class="block rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-4 text-left hover:bg-white/12 transition">
-          <p class="text-sm font-semibold">{{ c }}</p>
+        <a href="{{ base_href }}{{ data.sign }}/" class="block rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-2 text-left hover:bg-white/12 transition">
+          <p class="text-xs font-semibold">{{ c }}</p>
         </a>
         {% endfor %}
       </div>
 
       <!-- 次の一歩 -->
-      <div class="rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-5 flex items-center justify-between gap-4">
-        <div>
-          <p class="text-xs text-zinc-200/80">次の一歩（1つだけ）</p>
-          <p class="mt-1 text-sm font-semibold text-zinc-50">{{ data.next_step }}</p>
+      <div class="rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-2.5 flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-[10px] text-zinc-200/80">次の一歩</p>
+          <p class="mt-0.5 text-xs font-semibold text-zinc-50">{{ data.next_step }}</p>
         </div>
-        <a href="{{ base_href }}" class="shrink-0 rounded-2xl bg-white text-zinc-950 px-4 py-2 text-sm font-semibold hover:bg-zinc-100 transition">
+        <a href="{{ base_href }}" class="shrink-0 rounded-xl bg-white text-zinc-950 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-100 transition">
           もう一回みる
         </a>
       </div>
 
-      <!-- 他の星座 -->
-      <nav aria-label="他の星座">
-        <p class="text-xs text-zinc-200/80">他の星座:</p>
-        <ul class="sign-grid text-xs text-zinc-200/80 flex flex-wrap gap-x-2 gap-y-1 mt-2">
-          {% for s, ja in signs %}
-          <li><a href="{{ base_href }}{{ s }}/" class="hover:text-white transition">{{ ja }}</a></li>
-          {% endfor %}
-        </ul>
-      </nav>
-
       <!-- 注意書き -->
-      <p class="text-[11px] text-zinc-200/70 leading-relaxed pt-2">
+      <p class="text-[10px] text-zinc-200/70 leading-snug pt-1">
         ※占いは娯楽です。医療・法律・投資などの判断材料としては使いません。
       </p>
     </div>

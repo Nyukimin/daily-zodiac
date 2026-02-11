@@ -250,6 +250,7 @@ def render_html_index(data: Dict[str, Any], img_src: str, base_path: str) -> str
         data=data,
         base_href=base_href,
         signs=signs,
+        is_home=True,
     )
 
 
@@ -267,6 +268,7 @@ def render_html_sign(data: Dict[str, Any], img_src: str, base_path: str) -> str:
         data=data,
         base_href=base_href,
         signs=signs,
+        is_home=False,
     )
 
 

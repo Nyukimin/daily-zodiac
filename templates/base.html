@@ -16,58 +16,49 @@
     <div class="absolute -bottom-48 -right-48 h-[620px] w-[620px] rounded-full bg-amber-400/8 blur-3xl"></div>
   </div>
 
-  <main class="mx-auto max-w-5xl px-4 py-6">
-    <header class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-3">
-        <div class="h-9 w-9 rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur grid place-items-center" aria-hidden="true">
-          <span class="text-sm font-semibold">✦</span>
-        </div>
-        <div>
-          <p class="text-xs text-zinc-200/80">占いは娯楽</p>
-          <h1 class="text-base font-semibold tracking-tight">今日の星座占い</h1>
-        </div>
-      </div>
-    </header>
+  <main class="mx-auto max-w-5xl px-4 py-4 flex flex-col min-h-screen">
+    <!-- 星座切り替えタブ（SNS流入時は即切り替え可能にするため最上部に配置） -->
+    <nav class="mb-2 shrink-0" aria-label="星座・全体運">
+      <ul class="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-zinc-200/80">
+        <li><a href="{{ base_href }}" class="hover:text-white transition {% if is_home %}font-semibold text-white{% endif %}">全体運</a></li>
+        {% for s, ja in signs %}
+        <li><a href="{{ base_href }}{{ s }}/" class="hover:text-white transition {% if not is_home and data.sign == s %}font-semibold text-white{% endif %}">{{ ja }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
 
-    <!-- キービジュアル -->
-    <section class="w-full rounded-2xl ring-1 ring-white/12 overflow-hidden mb-6" aria-label="キービジュアル">
-      <div class="relative aspect-[2/3] min-h-[320px] bg-zinc-900/80">
-        <img
-          src="./{{ img_src }}"
-          alt="{{ data.sign_ja }}の今日の運勢"
-          class="absolute inset-0 w-full h-full object-contain object-top"
-        />
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/40 to-transparent" aria-hidden="true"></div>
-        <div class="absolute bottom-4 left-4 right-4 text-white/95">
-          <p class="text-xs opacity-90">{{ data.date }} / {{ data.sign_ja }}</p>
-          <h2 class="mt-1 text-xl md:text-2xl font-semibold tracking-tight">今日の結果</h2>
+    <!-- キービジュアル：左に情報・右にイラスト -->
+    <section class="w-full rounded-2xl ring-1 ring-white/12 overflow-hidden mb-2 shrink-0" aria-label="キービジュアル">
+      <div class="relative flex w-full h-[28vh] min-h-[120px] bg-zinc-900/80">
+        <!-- 左：日付・星座・見出し・要約の一覧（背景をグラデーションと一致させる） -->
+        <div class="relative z-10 flex flex-col justify-center gap-1 px-4 py-3 min-w-0 flex-1 bg-zinc-900/80">
+          <p class="text-[10px] text-zinc-200/90">{{ data.date }}</p>
+          <h2 class="text-base font-semibold tracking-tight text-white">{% if is_home %}今日の全体運{% else %}今日の{{ data.sign_ja }}{% endif %}</h2>
+          <p class="text-xs text-zinc-200/90 leading-snug mt-0.5">{{ (data.summary[:45] + '…') if data.summary|length > 45 else data.summary }}</p>
+        </div>
+        <!-- 右：イラスト（右寄せ・軽く拡大）+ グラデーションはイラスト左端から全面になだらかにフェード -->
+        <div class="relative flex-1 min-w-0 flex justify-end items-center overflow-hidden">
+          <img
+            src="./{{ img_src }}"
+            alt="{{ data.sign_ja }}の今日の運勢"
+            class="relative h-[130%] w-auto max-w-none object-contain object-right object-bottom"
+          />
+          <!-- イラストエリア全体を覆い、左端から右へなだらかにフェード -->
+          <div class="absolute inset-0 pointer-events-none" aria-hidden="true" style="background: linear-gradient(to right, rgb(24 24 27) 0%, rgb(24 24 27 / 0.85) 30%, rgb(24 24 27 / 0.55) 55%, rgb(24 24 27 / 0.25) 78%, transparent 100%);"></div>
         </div>
       </div>
     </section>
 
-    <!-- スクロールヒント：ビューポート下部に固定し初回表示で必ず見える。スクロールで非表示 -->
-    <div id="scroll-hint" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-zinc-950/70 backdrop-blur-sm ring-1 ring-white/15 pointer-events-none transition-opacity duration-300" aria-hidden="true">
-      <span class="inline-flex flex-col items-center gap-1 text-white text-xs">
-        <span>要約を見る</span>
-        <svg class="w-5 h-5 animate-bounce text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </span>
-    </div>
-    <script>
-      (function(){var h=document.getElementById('scroll-hint');if(h){var hide=function(){h.style.opacity='0'};window.addEventListener('scroll',hide,{once:true});setTimeout(hide,5000)}})();
-    </script>
-
     <!-- 広告枠 -->
-    <aside class="w-full rounded-xl ring-1 ring-white/12 bg-white/5 backdrop-blur-xl px-3 py-2 mb-5" aria-label="スポンサーリンク">
-      <p class="text-[11px] text-zinc-200/60 mb-1.5">スポンサーリンク</p>
-      <div class="ad-slot w-full max-w-[300px] h-12 mx-auto rounded-md bg-zinc-950/50 ring-1 ring-white/10 grid place-items-center text-[11px] text-zinc-200/60">
+    <aside class="w-full rounded-xl ring-1 ring-white/12 bg-white/5 backdrop-blur-xl px-2 py-1.5 mb-2 shrink-0" aria-label="スポンサーリンク">
+      <p class="text-[10px] text-zinc-200/60 mb-1">スポンサーリンク</p>
+      <div class="ad-slot w-full max-w-[300px] h-10 mx-auto rounded-md bg-zinc-950/50 ring-1 ring-white/10 grid place-items-center text-[10px] text-zinc-200/60">
         Ad Slot (300×48)
       </div>
     </aside>
 
     <!-- 結果コンテンツ -->
-    <section class="rounded-2xl ring-1 ring-white/12 bg-white/5 backdrop-blur-xl overflow-hidden" aria-label="今日の占い結果">
+    <section class="rounded-2xl ring-1 ring-white/12 bg-white/5 backdrop-blur-xl overflow-hidden flex-1 min-h-0" aria-label="今日の占い結果">
       {% block content %}{% endblock %}
     </section>
   </main>
