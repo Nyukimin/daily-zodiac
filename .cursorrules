@@ -8,6 +8,8 @@
 @rules/common/rules_logging.md
 @rules/common/rules_security.md
 @rules/common/rules_testing.md
+@rules/common/rules_figma_mcp.md
+@docs/実装仕様/Figma実装コンテキスト.md
 
 # ============================================
 # プロジェクト固有ルールの参照

@@ -16,7 +16,9 @@ https://nyukimin.github.io/daily-zodiac/
 ```powershell
 $env:BASE_PATH="/"
 python .\generate.py
-python -m http.server 8000 --directory .\site
+python -m http.server 8000 --bind 127.0.0.1 --directory .\site
 ```
 
 ブラウザで http://localhost:8000/ を開く。
+
+**ERR_EMPTY_RESPONSE が出る場合**: Windows では `--bind 127.0.0.1` を付けると解消することが多い。
