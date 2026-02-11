@@ -229,13 +229,13 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
       <div class="text-xs text-zinc-200/70">広告枠は後で差し込み</div>
     </header>
 
-    <section class="relative mt-8 w-full rounded-[28px] ring-1 ring-white/12 bg-white/5 overflow-hidden" style="aspect-ratio:{aspect_ratio}; min-height:70vh;">
+    <section class="relative mt-8 w-full rounded-[28px] ring-1 ring-white/12 bg-white/5 overflow-hidden" style="min-height:42vh;">
       <!-- 人物（右寄せ。主役は結果なので、少し引く） -->
-      <div class="absolute inset-y-0 right-0 w-[52%] min-h-full hidden md:block">
+      <div class="absolute inset-y-0 right-0 w-[32%] min-h-full hidden md:block">
         <img
           src="./{img_src}"
           alt="key visual"
-          class="h-full w-full object-cover object-[65%_20%] opacity-80"
+          class="h-full w-full object-contain object-[65%_20%] opacity-80"
         />
         <!-- 人物側を少し沈める暗幕（文字への干渉を防ぐ） -->
         <div class="absolute inset-0 bg-gradient-to-l from-zinc-950/40 via-zinc-950/60 to-zinc-950/85"></div>
@@ -248,13 +248,13 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         <img
           src="./{img_src}"
           alt="key visual"
-          class="h-full w-full object-cover object-[60%_15%] opacity-35 blur-[1px]"
+          class="h-full w-full object-contain object-[60%_15%] opacity-35 blur-[1px]"
         />
         <div class="absolute inset-0 bg-zinc-950/65"></div>
       </div>
 
       <!-- 左カラム（結果） -->
-      <div class="relative grid gap-6 p-6 sm:p-8 md:w-[56%]">
+      <div class="relative grid gap-6 p-6 sm:p-8 md:w-[65%]">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="text-xs text-zinc-200/80">{preview_data["date"]} / {preview_data["sign_ja"]}</p>
