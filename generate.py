@@ -189,8 +189,8 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         for c in choices_items
     ]) if choices_items else ""
 
-    other_signs = " | ".join([
-        f'<a href="{base}{s}/" class="hover:text-white">{SIGN_JA.get(s, s)}</a>'
+    other_signs_html = "\n".join([
+        f'          <li><a href="{base}{s}/" class="hover:text-white">{SIGN_JA.get(s, s)}</a></li>'
         for s in SIGNS
     ])
 
@@ -287,7 +287,10 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         </div>
 
         <!-- 他の星座 -->
-        <p class="text-xs text-zinc-200/80">他の星座: {other_signs}</p>
+        <p class="text-xs text-zinc-200/80">他の星座:</p>
+        <ul class="sign-grid text-xs text-zinc-200/80 flex flex-wrap gap-x-2 gap-y-1">
+{other_signs_html}
+        </ul>
 
         <!-- 注意書き -->
         <p class="text-[11px] text-zinc-200/70 leading-relaxed">
