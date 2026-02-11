@@ -54,8 +54,58 @@ def _get_png_aspect_ratio(path: Path) -> tuple[int, int] | None:
     return None
 
 
+def _load_color_images() -> List[tuple[str, List[Path]]]:
+    """assets/images/カラー を走査し [(色名, [png_path, ...]), ...] を返す。PNGのみ。"""
+    color_root = Path("assets/images/カラー")
+    if not color_root.exists():
+        return []
+    result: List[tuple[str, List[Path]]] = []
+    for color_dir in sorted(color_root.iterdir()):
+        if not color_dir.is_dir():
+            continue
+        pngs = sorted(color_dir.glob("*.png"))
+        if pngs:
+            result.append((color_dir.name, pngs))
+    return result
+
+
+_COLOR_IMAGES_CACHE: List[tuple[str, List[Path]]] | None = None
+
+
+def _get_color_images() -> List[tuple[str, List[Path]]]:
+    """_load_color_images の結果をキャッシュして返す。"""
+    global _COLOR_IMAGES_CACHE
+    if _COLOR_IMAGES_CACHE is None:
+        _COLOR_IMAGES_CACHE = _load_color_images()
+    return _COLOR_IMAGES_CACHE
+
+
+def get_key_visual_for_sign_and_date(sign: str, date_str: str) -> tuple[str, str]:
+    """星座・日付に応じて カラー からキービジュアルを選ぶ。(path, aspect_ratio_css)
+    同一日に同色重複なし、連続日同星座同色なし、均等利用、色内ループを満たす。
+    """
+    colors = _get_color_images()
+    default = ("images/RANAI/RANAI_01.png", "2/3")
+    if len(colors) < 12:
+        return default
+    try:
+        sign_idx = SIGNS.index(sign)
+    except ValueError:
+        return default
+    yyyymmdd = int(date_str.replace("-", ""))
+    num_colors = len(colors)
+    color_idx = (yyyymmdd + sign_idx) % num_colors
+    color_name, images = colors[color_idx]
+    image_idx = (yyyymmdd * num_colors + sign_idx) % len(images)
+    chosen = images[image_idx]
+    path = f"images/カラー/{color_name}/{chosen.name}".replace("\\", "/")
+    dims = _get_png_aspect_ratio(chosen)
+    ratio = f"{dims[0]}/{dims[1]}" if dims else "2/3"
+    return (path, ratio)
+
+
 def get_key_visual_for_date(date_str: str) -> tuple[str, str]:
-    """日付に応じてキービジュアルを順に選ぶ。末尾で先頭に戻る。(path, aspect_ratio_css)"""
+    """日付に応じてキービジュアルを順に選ぶ。トップページ用（RANAI）。(path, aspect_ratio_css)"""
     ranai_dir = Path("assets/images/RANAI")
     default = ("images/RANAI/RANAI_01.png", "2/3")
     if not ranai_dir.exists():
@@ -118,72 +168,16 @@ def fallback_one(sign: str, date_str: str, err: Exception) -> Dict[str, Any]:
         "next_step": "机の上を1分だけ片付ける"
     }
 
-def render_html(data: Dict[str, Any]) -> str:
-    ja = data.get("sign_ja", data["sign"])
-    choices = data.get("choices", [])
-    li = "\n".join([f"      <li>{c}</li>" for c in choices])
-
+def _render_hero_html(
+    data: Dict[str, Any], img_src: str, aspect_ratio: str, page_title: str
+) -> str:
+    """ヒーローレイアウトのHTMLを生成。index / 星座ページ共通。"""
     base = BASE_PATH.rstrip("/") + "/"
-    other_links = " | ".join([
-        f'<a href="{base}{s}/">{SIGN_JA.get(s, s)}</a>'
-        for s in SIGNS
-    ])
+    sign = data.get("sign", "aries")
 
-    return f"""<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <base href="{BASE_PATH}">
-  <title>{ja} / {data["date"]} - 今日の星座占い</title>
-  <style>
-    .ad-slot {{ min-height: 120px; background: #f5f5f5; }}
-    .other-signs {{ font-size: 0.9em; margin-top: 1.5rem; }}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <p><a href="{base}">← 入口へ</a></p>
-
-    <h1>{ja} / {data["date"]}</h1>
-    <p>{data["summary"]}</p>
-
-    <h2>選択肢</h2>
-    <ol>
-{li}
-    </ol>
-
-    <h2>次の一歩</h2>
-    <p>{data["next_step"]}</p>
-
-    <div class="ad-slot" aria-label="ad-placeholder"></div>
-
-    <p class="other-signs">他の星座: {other_links}</p>
-  </div>
-</body>
-</html>
-"""
-
-def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
-    sign_dir = out_root / sign
-    sign_dir.mkdir(parents=True, exist_ok=True)
-
-    (sign_dir / "index.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
-    (sign_dir / "index.html").write_text(
-        render_html(data),
-        encoding="utf-8"
-    )
-
-def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> None:
-    base = BASE_PATH.rstrip("/") + "/"
-    img_src, aspect_ratio = get_key_visual_for_date(date_str)
-
-    choices_items = preview_data.get("choices", [])[:3]
+    choices_items = data.get("choices", [])[:3]
     choices_html = "\n".join([
-        f'''          <a href="{base}{preview_data["sign"]}/" class="block rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-4 text-left hover:bg-white/12 transition">
+        f'''          <a href="{base}{sign}/" class="block rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-4 text-left hover:bg-white/12 transition">
             <p class="text-sm font-semibold">{c}</p>
           </a>'''
         for c in choices_items
@@ -194,13 +188,13 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         for s in SIGNS
     ])
 
-    html = f"""<!doctype html>
+    return f"""<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base href="{BASE_PATH}">
-  <title>占い（結果を読むUI）</title>
+  <title>{page_title}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
@@ -257,7 +251,7 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
       <div class="relative grid gap-6 p-6 sm:p-8 md:w-[65%]">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <p class="text-xs text-zinc-200/80">{preview_data["date"]} / {preview_data["sign_ja"]}</p>
+            <p class="text-xs text-zinc-200/80">{data["date"]} / {data["sign_ja"]}</p>
             <h2 class="mt-1 text-2xl font-semibold tracking-tight">今日の結果</h2>
           </div>
         </div>
@@ -266,7 +260,7 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         <div class="rounded-2xl bg-zinc-950/35 ring-1 ring-white/12 backdrop-blur-xl p-5">
           <p class="text-xs text-zinc-200/80">要約</p>
           <p class="mt-1 text-sm leading-relaxed text-zinc-50">
-            {preview_data["summary"]}
+            {data["summary"]}
           </p>
         </div>
 
@@ -279,7 +273,7 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
         <div class="rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-5 flex items-center justify-between gap-4">
           <div>
             <p class="text-xs text-zinc-200/80">次の一歩（1つだけ）</p>
-            <p class="mt-1 text-sm font-semibold text-zinc-50">{preview_data["next_step"]}</p>
+            <p class="mt-1 text-sm font-semibold text-zinc-50">{data["next_step"]}</p>
           </div>
           <a href="{base}" class="shrink-0 rounded-2xl bg-white text-zinc-950 px-4 py-2 text-sm font-semibold hover:bg-zinc-100 transition">
             もう一回みる
@@ -313,6 +307,28 @@ def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> 
 </body>
 </html>
 """
+
+
+def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
+    """星座ページ（カラー キービジュアル）を出力。"""
+    sign_dir = out_root / sign
+    sign_dir.mkdir(parents=True, exist_ok=True)
+
+    (sign_dir / "index.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+    img_src, _ = get_key_visual_for_sign_and_date(sign, data["date"])
+    page_title = f"{data['sign_ja']} / {data['date']} - 今日の星座占い"
+    html = _render_hero_html(data, img_src, "2/3", page_title)
+    (sign_dir / "index.html").write_text(html, encoding="utf-8")
+
+def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> None:
+    """トップページ（RANAI キービジュアル）を出力。"""
+    img_src, _ = get_key_visual_for_date(date_str)
+    html = _render_hero_html(
+        preview_data, img_src, "2/3", page_title="占い（結果を読むUI）"
+    )
     (out_root / "index.html").write_text(html, encoding="utf-8")
 
 
@@ -354,9 +370,5 @@ def generate_site(
         write_sign_files(out_root, sign, data)
 
 
-def main() -> None:
-    generate_site()
-
-
 if __name__ == "__main__":
-    main()
+    generate_site()

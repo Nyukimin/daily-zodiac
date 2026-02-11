@@ -88,7 +88,7 @@
 - **実行**: 常時稼働しない。GitHub Actions 内でのみ実行（日次1回）。
 - **役割**: JSTで `YYYY-MM-DD` を決定し、12星座を走査して `site/` 配下に HTML/JSON を出力する。
 - **日付**: `datetime.now(timezone(timedelta(hours=9)))` で JST を取得し `strftime("%Y-%m-%d")`。
-- **推奨関数**: `get_jst_date_str()`, `build_one(sign, date_str)`, `fallback_one(sign, date_str, err)`, `render_html(data)`, `write_files()`。星座ループ内で try/except し、例外時は `fallback_one()` で継続。
+- **推奨関数**: `get_jst_date_str()`, `build_one(sign, date_str)`, `fallback_one(sign, date_str, err)`, `_render_hero_html(data, img_src, aspect_ratio, page_title)`, `write_index()`, `write_sign_files()`。星座ループ内で try/except し、例外時は `fallback_one()` で継続。
 
 ### 4.2 GitHub Actions
 - **トリガー**: `push`（main）, `schedule`（毎日1回・UTC cron）, `workflow_dispatch`（手動）。
