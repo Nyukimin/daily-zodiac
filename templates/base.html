@@ -18,7 +18,7 @@
 
   <main class="mx-auto max-w-5xl px-4 py-4 flex flex-col min-h-screen">
     <!-- 星座切り替えタブ（SNS流入時は即切り替え可能にするため最上部に配置） -->
-    <nav class="mb-2 shrink-0" aria-label="星座・全体運">
+    <nav class="mb-2 shrink-0" aria-label="他の星座">
       <ul class="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-zinc-200/80">
         <li><a href="{{ base_href }}" class="hover:text-white transition {% if is_home %}font-semibold text-white{% endif %}">全体運</a></li>
         {% for s, ja in signs %}
