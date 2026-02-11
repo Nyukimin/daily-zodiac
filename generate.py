@@ -86,6 +86,12 @@ def render_html(data: Dict[str, Any]) -> str:
     choices = data.get("choices", [])
     li = "\n".join([f"      <li>{c}</li>" for c in choices])
 
+    base = BASE_PATH.rstrip("/") + "/"
+    other_links = " | ".join([
+        f'<a href="{base}{s}/">{SIGN_JA.get(s, s)}</a>'
+        for s in SIGNS
+    ])
+
     return f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -93,20 +99,30 @@ def render_html(data: Dict[str, Any]) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base href="{BASE_PATH}">
   <title>{ja} / {data["date"]} - 今日の星座占い</title>
+  <style>
+    .ad-slot {{ min-height: 120px; background: #f5f5f5; }}
+    .other-signs {{ font-size: 0.9em; margin-top: 1.5rem; }}
+  </style>
 </head>
 <body>
-  <p><a href="./">← 入口へ</a></p>
+  <div class="container">
+    <p><a href="{base}">← 入口へ</a></p>
 
-  <h1>{ja} / {data["date"]}</h1>
-  <p>{data["summary"]}</p>
+    <h1>{ja} / {data["date"]}</h1>
+    <p>{data["summary"]}</p>
 
-  <h2>選択肢</h2>
-  <ol>
+    <h2>選択肢</h2>
+    <ol>
 {li}
-  </ol>
+    </ol>
 
-  <h2>次の一歩</h2>
-  <p>{data["next_step"]}</p>
+    <h2>次の一歩</h2>
+    <p>{data["next_step"]}</p>
+
+    <div class="ad-slot" aria-label="ad-placeholder"></div>
+
+    <p class="other-signs">他の星座: {other_links}</p>
+  </div>
 </body>
 </html>
 """
@@ -124,9 +140,10 @@ def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
         encoding="utf-8"
     )
 
-def write_index(out_root: Path) -> None:
+def write_index(out_root: Path, date_str: str) -> None:
+    base = BASE_PATH.rstrip("/") + "/"
     links = "\n".join([
-        f'    <li><a href="./{s}/">{SIGN_JA.get(s, s)}</a></li>'
+        f'    <li><a href="{base}{s}/">{SIGN_JA.get(s, s)}</a></li>'
         for s in SIGNS
     ])
 
@@ -137,12 +154,21 @@ def write_index(out_root: Path) -> None:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base href="{BASE_PATH}">
   <title>今日の星座占い</title>
+  <style>
+    .sign-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem 1rem; list-style: none; padding-left: 0; }}
+    @media (max-width: 600px) {{ .sign-grid {{ grid-template-columns: 1fr; }} }}
+    .ad-slot {{ min-height: 120px; background: #f5f5f5; }}
+  </style>
 </head>
 <body>
-  <h1>今日の星座占い</h1>
-  <ul>
+  <div class="container">
+    <h1>今日の星座占い</h1>
+    <p class="today">{date_str} (JST)</p>
+    <ul class="sign-grid">
 {links}
-  </ul>
+    </ul>
+    <div class="ad-slot" aria-label="ad-placeholder"></div>
+  </div>
 </body>
 </html>
 """
@@ -161,7 +187,7 @@ def generate_site(
 
     templates = load_templates(Path("assets/templates.json"))
 
-    write_index(out_root)
+    write_index(out_root, date_str)
 
     for sign in SIGNS:
         try:
