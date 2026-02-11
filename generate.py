@@ -4,11 +4,15 @@ import hashlib
 import json
 import os
 import shutil
+import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
 
+from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+load_dotenv()
 
 # デプロイ時（GitHub Actions）は /daily-zodiac/、ローカルは /
 _base = os.environ.get("BASE_PATH")
@@ -198,8 +202,24 @@ def build_sign_fallback(date_key: str, sign_key: str) -> Dict[str, Any]:
 
 
 def try_build_from_engine(date_key: str) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
-    """将来の占星術エンジン（pyswisseph等）導入用。初期実装では常にraise。"""
-    raise NotImplementedError("Engine not implemented; use fallback.")
+    """占星術エンジン（flatlib）+ Gemini で生成。失敗時は raise してフォールバックへ。"""
+    from astro.engine import get_chart_data
+    from astro.llm_formatter import format_with_llm
+
+    astro_data = get_chart_data(date_key)
+    global_block = format_with_llm(astro_data, "global")
+    if global_block is None:
+        raise RuntimeError("LLM format failed for global")
+    time.sleep(1)  # レート制限対策
+    signs_block: Dict[str, Dict[str, Any]] = {}
+    for sign in SIGNS:
+        sign_ja = SIGN_JA.get(sign, sign)
+        block = format_with_llm(astro_data, sign, sign_ja)
+        if block is None:
+            raise RuntimeError(f"LLM format failed for {sign}")
+        signs_block[sign] = block
+        time.sleep(1)  # レート制限対策
+    return (global_block, signs_block)
 
 
 def build_daily_payload(date_key: str, generated_at_jst_iso: str) -> Dict[str, Any]:

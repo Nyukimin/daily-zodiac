@@ -39,6 +39,8 @@ jobs:
         run: pytest -q
 
       - name: Generate site
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: python generate.py
 
       - name: Upload artifact
