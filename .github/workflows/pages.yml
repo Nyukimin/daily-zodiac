@@ -4,8 +4,8 @@ on:
   push:
     branches: ["main"]
   schedule:
-    # UTC固定（例: JST 06:10 に回したい場合は UTC 21:10）
-    - cron: "10 21 * * *"
+    # UTC固定: JST 01:00 = UTC 16:00（前日）
+    - cron: "0 16 * * *"
   workflow_dispatch:
 
 permissions:

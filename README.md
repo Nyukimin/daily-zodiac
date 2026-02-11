@@ -8,7 +8,7 @@ https://nyukimin.github.io/daily-zodiac/
 
 ## 更新スケジュール
 
-- **cron**: `10 21 * * *` = UTC 21:10 = JST 06:10（毎日）
+- **cron**: `0 16 * * *` = UTC 16:00 = JST 01:00（毎日）
 - **日付基準**: JST（Asia/Tokyo）
 
 ## ローカル確認（PowerShell）
