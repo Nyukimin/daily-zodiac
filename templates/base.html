@@ -27,9 +27,10 @@
       </ul>
     </nav>
 
-    <!-- キービジュアル：左に情報・右にイラスト（イラストとアドバイス同高） -->
-    <section class="w-full rounded-2xl ring-1 ring-white/12 overflow-hidden min-h-0" aria-label="キービジュアル">
-      <div class="relative flex w-full h-full min-h-[120px] bg-zinc-900/80">
+    <!-- 占い結果：キービジュアル（左に情報・右にイラスト） -->
+    <section class="w-full rounded-2xl ring-1 ring-white/12 overflow-hidden min-h-0 flex flex-col" aria-label="占い結果">
+      <p class="shrink-0 text-[10px] text-zinc-200/80 px-4 pt-3 pb-1">占い結果</p>
+      <div class="relative flex w-full flex-1 min-h-[120px] bg-zinc-900/80">
         <!-- 左：日付・星座・見出し・要約の一覧（背景をグラデーションと一致させる） -->
         <div class="relative z-10 flex flex-col justify-center gap-1 px-4 py-3 min-w-0 flex-1 bg-zinc-900/80">
           <p class="text-[10px] text-zinc-200/90">{{ data.date }}</p>
