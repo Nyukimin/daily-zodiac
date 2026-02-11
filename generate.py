@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+import hashlib
 import json
 import os
 import shutil
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Dict, Any, List
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # デプロイ時（GitHub Actions）は /daily-zodiac/、ローカルは /
 _base = os.environ.get("BASE_PATH")
@@ -36,8 +39,33 @@ SIGN_JA: Dict[str, str] = {
     "pisces": "魚座",
 }
 
+
+def stable_hash_to_int(text: str) -> int:
+    """Pythonのhash()はランダム化されるため禁止。sha256で安定化してint化。"""
+    h = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return int(h[:16], 16)
+
+
+def pick_index(date_key: str, key: str, n: int) -> int:
+    """決定論的インデックス選択。stable_hash_to_int(date_key + ":" + key) % n"""
+    return stable_hash_to_int(date_key + ":" + key) % n
+
+
+def get_now_jst() -> datetime:
+    """JSTの現在時刻を返す。"""
+    return datetime.now(JST)
+
+
+def get_date_key_jst(now_jst: datetime | None = None) -> str:
+    """JST日付キー YYYY-MM-DD を返す。"""
+    if now_jst is None:
+        now_jst = get_now_jst()
+    return now_jst.strftime("%Y-%m-%d")
+
+
 def get_jst_date_str() -> str:
-    return datetime.now(JST).strftime("%Y-%m-%d")
+    """後方互換用。get_date_key_jst(get_now_jst()) と同等。"""
+    return get_date_key_jst()
 
 
 def _get_png_aspect_ratio(path: Path) -> tuple[int, int] | None:
@@ -122,214 +150,146 @@ def get_key_visual_for_date(date_str: str) -> tuple[str, str]:
     return (path, ratio)
 
 
-def load_templates(path: str | Path) -> dict:
-    """templates.json を読み込んで返す。"""
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+def load_patterns() -> Dict[str, Any]:
+    """fallback/global_patterns.json と fallback/sign_patterns.json を読む。"""
+    result: Dict[str, Any] = {}
+    global_path = Path("fallback/global_patterns.json")
+    sign_path = Path("fallback/sign_patterns.json")
+    if global_path.exists():
+        with open(global_path, encoding="utf-8") as f:
+            result["global"] = json.load(f)
+    else:
+        result["global"] = {"patterns": []}
+    if sign_path.exists():
+        with open(sign_path, encoding="utf-8") as f:
+            result["signs"] = json.load(f)
+    else:
+        result["signs"] = {}
+    return result
 
 
-def select_template(templates: dict, sign: str, date_str: str) -> dict:
-    """日付からテンプレを選ぶ（乱数なし、同日・同星座で固定）。"""
-    yyyymmdd = int(date_str.replace("-", ""))
-    arr = templates[sign]
-    idx = yyyymmdd % len(arr)
+def build_global_fallback(date_key: str) -> Dict[str, Any]:
+    """日付キーから global ブロックをフォールバックで生成。"""
+    patterns = load_patterns()
+    arr = patterns.get("global", {}).get("patterns", [])
+    if not arr:
+        return {
+            "summary": "今日は整えるほど前に進みやすい日。焦りは小さく切って扱うと安定する。",
+            "choices": ["先に片づけてから着手する", "まず一つだけ終わらせる", "迷うものは保留箱に逃がす"],
+            "next_step": "作業前に机の上を3分だけ整える"
+        }
+    idx = pick_index(date_key, "global", len(arr))
     return arr[idx]
 
 
-def build_one_from_templates(
-    templates: dict, sign: str, date_str: str
-) -> Dict[str, Any]:
-    """テンプレから date, sign, sign_ja を付与した dict を作る。"""
-    t = select_template(templates, sign, date_str)
-    ja = SIGN_JA.get(sign, sign)
+def build_sign_fallback(date_key: str, sign_key: str) -> Dict[str, Any]:
+    """日付・星座からフォールバックで {summary, choices, next_step} を生成。"""
+    patterns = load_patterns()
+    sign_patterns = patterns.get("signs", {}).get(sign_key, [])
+    if not sign_patterns:
+        ja = SIGN_JA.get(sign_key, sign_key)
+        return {
+            "summary": f"{ja}の今日の要約（フォールバック）",
+            "choices": ["少し整える", "一歩引く", "まず確認する"],
+            "next_step": "机の上を1分だけ片付ける"
+        }
+    idx = pick_index(date_key, "sign:" + sign_key, len(sign_patterns))
+    return sign_patterns[idx]
+
+
+def try_build_from_engine(date_key: str) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+    """将来の占星術エンジン（pyswisseph等）導入用。初期実装では常にraise。"""
+    raise NotImplementedError("Engine not implemented; use fallback.")
+
+
+def build_daily_payload(date_key: str, generated_at_jst_iso: str) -> Dict[str, Any]:
+    """日付キーから1日分のpayload（global + signs）を組む。エンジン失敗時はフォールバック。"""
+    global_block: Dict[str, Any]
+    signs_block: Dict[str, Dict[str, Any]] = {}
+    try:
+        global_block, signs_block = try_build_from_engine(date_key)
+    except Exception:
+        global_block = build_global_fallback(date_key)
+        for sign in SIGNS:
+            signs_block[sign] = build_sign_fallback(date_key, sign)
+    for sign in SIGNS:
+        if sign not in signs_block:
+            signs_block[sign] = build_sign_fallback(date_key, sign)
     return {
-        "date": date_str,
-        "sign": sign,
-        "sign_ja": ja,
-        "summary": t["summary"],
-        "choices": t["choices"],
-        "next_step": t["next_step"],
+        "date": date_key,
+        "generated_at_jst": generated_at_jst_iso,
+        "global": global_block,
+        "signs": signs_block,
     }
 
 
-def build_one(sign: str, date_str: str) -> Dict[str, Any]:
-    """後方互換用。テンプレから取得する。"""
-    templates = load_templates(Path("assets/templates.json"))
-    return build_one_from_templates(templates, sign, date_str)
+_JINJA_ENV: Environment | None = None
 
-def fallback_one(sign: str, date_str: str, err: Exception) -> Dict[str, Any]:
-    ja = SIGN_JA.get(sign, sign)
-    return {
-        "date": date_str,
-        "sign": sign,
-        "sign_ja": ja,
-        "summary": f"{ja}の今日の要約（フォールバック）",
-        "choices": ["少し整える", "一歩引く", "まず確認する"],
-        "next_step": "机の上を1分だけ片付ける"
-    }
 
-def _render_hero_html(
-    data: Dict[str, Any], img_src: str, aspect_ratio: str, page_title: str
-) -> str:
-    """ヒーローレイアウトのHTMLを生成。index / 星座ページ共通。"""
-    base = BASE_PATH.rstrip("/") + "/"
-    sign = data.get("sign", "aries")
+def _get_jinja_env() -> Environment:
+    """Jinja2 環境を取得（テンプレートディレクトリは templates/）。"""
+    global _JINJA_ENV
+    if _JINJA_ENV is None:
+        _JINJA_ENV = Environment(
+            loader=FileSystemLoader("templates"),
+            autoescape=select_autoescape(disabled_extensions=("html",)),
+        )
+    return _JINJA_ENV
 
-    choices_items = data.get("choices", [])[:3]
-    choices_html = "\n".join([
-        f'''          <a href="{base}{sign}/" class="block rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-4 text-left hover:bg-white/12 transition">
-            <p class="text-sm font-semibold">{c}</p>
-          </a>'''
-        for c in choices_items
-    ]) if choices_items else ""
 
-    other_signs_html = "\n".join([
-        f'          <li><a href="{base}{s}/" class="hover:text-white">{SIGN_JA.get(s, s)}</a></li>'
-        for s in SIGNS
-    ])
+def render_html_index(data: Dict[str, Any], img_src: str, base_path: str) -> str:
+    """トップページ用 HTML をレンダリング。"""
+    env = _get_jinja_env()
+    tmpl = env.get_template("index.html")
+    base_href = base_path.rstrip("/") + "/"
+    signs = [(s, SIGN_JA.get(s, s)) for s in SIGNS]
+    return tmpl.render(
+        base_path=base_path,
+        page_title="占い（結果を読むUI）",
+        img_src=img_src,
+        data=data,
+        base_href=base_href,
+        signs=signs,
+    )
 
-    return f"""<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <base href="{BASE_PATH}">
-  <title>{page_title}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
 
-<body class="min-h-screen bg-zinc-950 text-zinc-50 overflow-x-hidden">
-  <!-- 背景（暗幕＋ほんの少しの光） -->
-  <div class="fixed inset-0 -z-10">
-    <div class="absolute inset-0 bg-zinc-950"></div>
-    <div class="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full bg-fuchsia-500/15 blur-3xl"></div>
-    <div class="absolute -bottom-48 -right-48 h-[620px] w-[620px] rounded-full bg-amber-400/10 blur-3xl"></div>
-    <div class="absolute inset-0 bg-gradient-to-b from-zinc-950/70 via-zinc-950/55 to-zinc-950/85"></div>
-  </div>
-
-  <!-- ヒーロー全体 -->
-  <main class="mx-auto max-w-6xl px-4 py-10">
-    <header class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur grid place-items-center">
-          <span class="text-sm font-semibold">✦</span>
-        </div>
-        <div>
-          <p class="text-xs text-zinc-200/80">占いは娯楽。結果が読みやすいことを優先。</p>
-          <h1 class="text-lg font-semibold tracking-tight">今日の星座占い</h1>
-        </div>
-      </div>
-
-      <div class="text-xs text-zinc-200/70">広告枠は後で差し込み</div>
-    </header>
-
-    <section class="relative mt-8 w-full rounded-[28px] ring-1 ring-white/12 bg-white/5 overflow-hidden" style="min-height:42vh;">
-      <!-- 人物（右寄せ。主役は結果なので、少し引く） -->
-      <div class="absolute inset-y-0 right-0 w-[32%] min-h-full hidden md:block">
-        <img
-          src="./{img_src}"
-          alt="key visual"
-          class="h-full w-full object-contain object-[65%_20%] opacity-80"
-        />
-        <!-- 人物側を少し沈める暗幕（文字への干渉を防ぐ） -->
-        <div class="absolute inset-0 bg-gradient-to-l from-zinc-950/40 via-zinc-950/60 to-zinc-950/85"></div>
-        <!-- 下側暗くしてカードを浮かせる -->
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/35 via-transparent to-transparent"></div>
-      </div>
-
-      <!-- モバイルは人物を薄い背景にする -->
-      <div class="absolute inset-0 md:hidden">
-        <img
-          src="./{img_src}"
-          alt="key visual"
-          class="h-full w-full object-contain object-[60%_15%] opacity-35 blur-[1px]"
-        />
-        <div class="absolute inset-0 bg-zinc-950/65"></div>
-      </div>
-
-      <!-- 左カラム（結果） -->
-      <div class="relative grid gap-6 p-6 sm:p-8 md:w-[65%]">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-xs text-zinc-200/80">{data["date"]} / {data["sign_ja"]}</p>
-            <h2 class="mt-1 text-2xl font-semibold tracking-tight">今日の結果</h2>
-          </div>
-        </div>
-
-        <!-- 要約 -->
-        <div class="rounded-2xl bg-zinc-950/35 ring-1 ring-white/12 backdrop-blur-xl p-5">
-          <p class="text-xs text-zinc-200/80">要約</p>
-          <p class="mt-1 text-sm leading-relaxed text-zinc-50">
-            {data["summary"]}
-          </p>
-        </div>
-
-        <!-- 選択肢 -->
-        <div class="grid gap-3 sm:grid-cols-2">
-{choices_html}
-        </div>
-
-        <!-- 次の一歩 -->
-        <div class="rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl p-5 flex items-center justify-between gap-4">
-          <div>
-            <p class="text-xs text-zinc-200/80">次の一歩（1つだけ）</p>
-            <p class="mt-1 text-sm font-semibold text-zinc-50">{data["next_step"]}</p>
-          </div>
-          <a href="{base}" class="shrink-0 rounded-2xl bg-white text-zinc-950 px-4 py-2 text-sm font-semibold hover:bg-zinc-100 transition">
-            もう一回みる
-          </a>
-        </div>
-
-        <!-- 他の星座 -->
-        <p class="text-xs text-zinc-200/80">他の星座:</p>
-        <ul class="sign-grid text-xs text-zinc-200/80 flex flex-wrap gap-x-2 gap-y-1">
-{other_signs_html}
-        </ul>
-
-        <!-- 注意書き -->
-        <p class="text-[11px] text-zinc-200/70 leading-relaxed">
-          ※占いは娯楽です。医療・法律・投資などの判断材料としては使いません。
-        </p>
-      </div>
-
-      <!-- 右下：広告枠（結果の邪魔をしない位置） -->
-      <aside class="relative hidden md:block">
-        <div class="absolute bottom-6 right-6 w-[300px] rounded-3xl bg-white/8 ring-1 ring-white/12 backdrop-blur-xl p-5">
-          <p class="text-sm font-semibold">広告（プレースホルダ）</p>
-          <p class="mt-2 text-xs text-zinc-200/80">結果の可読性を優先して、隅に固定。</p>
-          <div class="ad-slot mt-4 h-24 rounded-2xl bg-zinc-950/35 ring-1 ring-white/10 grid place-items-center text-xs text-zinc-200/70">
-            Ad Slot
-          </div>
-        </div>
-      </aside>
-    </section>
-  </main>
-</body>
-</html>
-"""
+def render_html_sign(data: Dict[str, Any], img_src: str, base_path: str) -> str:
+    """星座ページ用 HTML をレンダリング。"""
+    env = _get_jinja_env()
+    tmpl = env.get_template("sign.html")
+    base_href = base_path.rstrip("/") + "/"
+    signs = [(s, SIGN_JA.get(s, s)) for s in SIGNS]
+    page_title = f"{data['sign_ja']} / {data['date']} - 今日の星座占い"
+    return tmpl.render(
+        base_path=base_path,
+        page_title=page_title,
+        img_src=img_src,
+        data=data,
+        base_href=base_href,
+        signs=signs,
+    )
 
 
 def write_sign_files(out_root: Path, sign: str, data: Dict[str, Any]) -> None:
-    """星座ページ（カラー キービジュアル）を出力。"""
+    """星座ページ（カラー キービジュアル）を出力。HTML のみ（JSON は site/data/ に統一）。"""
     sign_dir = out_root / sign
     sign_dir.mkdir(parents=True, exist_ok=True)
 
-    (sign_dir / "index.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
     img_src, _ = get_key_visual_for_sign_and_date(sign, data["date"])
-    page_title = f"{data['sign_ja']} / {data['date']} - 今日の星座占い"
-    html = _render_hero_html(data, img_src, "2/3", page_title)
+    html = render_html_sign(data, img_src, BASE_PATH)
     (sign_dir / "index.html").write_text(html, encoding="utf-8")
 
 def write_index(out_root: Path, date_str: str, preview_data: Dict[str, Any]) -> None:
     """トップページ（RANAI キービジュアル）を出力。"""
     img_src, _ = get_key_visual_for_date(date_str)
-    html = _render_hero_html(
-        preview_data, img_src, "2/3", page_title="占い（結果を読むUI）"
-    )
+    html = render_html_index(preview_data, img_src, BASE_PATH)
     (out_root / "index.html").write_text(html, encoding="utf-8")
+
+
+def write_json(payload: Dict[str, Any], path: Path) -> None:
+    """payload を JSON で path に書き出す。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def generate_site(
@@ -337,10 +297,17 @@ def generate_site(
     out_dir: str | Path = "site",
 ) -> None:
     """日次占いサイトを生成する。"""
-    if date_str is None:
-        date_str = get_jst_date_str()
+    now = get_now_jst()
+    date_key = date_str if date_str is not None else get_date_key_jst(now)
+    generated_at = now.isoformat()
+
     out_root = Path(out_dir)
     out_root.mkdir(parents=True, exist_ok=True)
+
+    payload = build_daily_payload(date_key, generated_at)
+
+    (out_root / "data").mkdir(parents=True, exist_ok=True)
+    write_json(payload, out_root / "data" / f"{date_key}.json")
 
     # 画像を site/images/ にコピー
     src_images = Path("assets/images")
@@ -353,20 +320,26 @@ def generate_site(
             ignore=shutil.ignore_patterns("*.txt", "*.mp4")
         )
 
-    templates = load_templates(Path("assets/templates.json"))
-
-    preview_data: Dict[str, Any]
-    try:
-        preview_data = build_one_from_templates(templates, "aries", date_str)
-    except Exception:
-        preview_data = fallback_one("aries", date_str, Exception("preview"))
-    write_index(out_root, date_str, preview_data)
+    preview_data: Dict[str, Any] = {
+        "date": date_key,
+        "sign": "aries",
+        "sign_ja": SIGN_JA["aries"],
+        "summary": payload["global"]["summary"],
+        "choices": payload["global"]["choices"],
+        "next_step": payload["global"]["next_step"],
+    }
+    write_index(out_root, date_key, preview_data)
 
     for sign in SIGNS:
-        try:
-            data = build_one_from_templates(templates, sign, date_str)
-        except Exception as e:
-            data = fallback_one(sign, date_str, e)
+        s = payload["signs"][sign]
+        data: Dict[str, Any] = {
+            "date": date_key,
+            "sign": sign,
+            "sign_ja": SIGN_JA.get(sign, sign),
+            "summary": s["summary"],
+            "choices": s["choices"],
+            "next_step": s["next_step"],
+        }
         write_sign_files(out_root, sign, data)
 
 

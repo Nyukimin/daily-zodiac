@@ -20,6 +20,7 @@ env/
 
 # 生成物（Actions が毎回生成）
 site/
+site_test/
 
 # ログ
 logs/

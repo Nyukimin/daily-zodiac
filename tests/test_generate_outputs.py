@@ -6,25 +6,29 @@ from generate import SIGNS, generate_site
 
 
 def test_generate_site_creates_files(tmp_path):
-    """generate_site を実行すると、index.html と各星座の index.html/index.json が生成される。"""
+    """generate_site を実行すると、index.html、各星座の index.html、data/{date}.json が生成される。"""
     generate_site(date_str="2026-02-10", out_dir=tmp_path)
 
     assert (tmp_path / "index.html").exists()
+    assert (tmp_path / "data" / "2026-02-10.json").exists()
 
     for sign in SIGNS:
         assert (tmp_path / sign / "index.html").exists()
-        assert (tmp_path / sign / "index.json").exists()
 
 
 def test_json_has_required_keys(tmp_path):
-    """各 JSON に必須キー（date, sign, sign_ja, summary, choices, next_step）がある。"""
+    """data/{date}.json に global と signs の必須キー（summary, choices, next_step）がある。"""
     generate_site(date_str="2026-02-10", out_dir=tmp_path)
-    required = {"date", "sign", "sign_ja", "summary", "choices", "next_step"}
-
+    p = tmp_path / "data" / "2026-02-10.json"
+    payload = json.loads(p.read_text(encoding="utf-8"))
+    assert "date" in payload and payload["date"] == "2026-02-10"
+    assert "global" in payload
+    assert {"summary", "choices", "next_step"} <= set(payload["global"].keys())
+    assert "signs" in payload
     for sign in SIGNS:
-        p = tmp_path / sign / "index.json"
-        data = json.loads(p.read_text(encoding="utf-8"))
-        assert required <= set(data.keys()), f"{sign}: 必須キーが不足"
+        assert sign in payload["signs"], f"signs に {sign} がありません"
+        s = payload["signs"][sign]
+        assert {"summary", "choices", "next_step"} <= set(s.keys()), f"{sign}: 必須キーが不足"
 
 
 def test_html_has_meta_and_base(tmp_path):

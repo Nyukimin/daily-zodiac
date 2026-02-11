@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="{{ base_path }}">
+  <title>{{ page_title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-zinc-950 text-zinc-50 overflow-x-hidden">
+  <!-- 背景（暗幕＋ほんの少しの光） -->
+  <div class="fixed inset-0 -z-10">
+    <div class="absolute inset-0 bg-zinc-950"></div>
+    <div class="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full bg-fuchsia-500/15 blur-3xl"></div>
+    <div class="absolute -bottom-48 -right-48 h-[620px] w-[620px] rounded-full bg-amber-400/10 blur-3xl"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-zinc-950/70 via-zinc-950/55 to-zinc-950/85"></div>
+  </div>
+
+  <!-- ヒーロー全体 -->
+  <main class="mx-auto max-w-6xl px-4 py-10">
+    <header class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur grid place-items-center">
+          <span class="text-sm font-semibold">✦</span>
+        </div>
+        <div>
+          <p class="text-xs text-zinc-200/80">占いは娯楽。結果が読みやすいことを優先。</p>
+          <h1 class="text-lg font-semibold tracking-tight">今日の星座占い</h1>
+        </div>
+      </div>
+
+      <div class="text-xs text-zinc-200/70">広告枠は後で差し込み</div>
+    </header>
+
+    <section class="relative mt-8 w-full rounded-[28px] ring-1 ring-white/12 bg-white/5 overflow-hidden" style="min-height:42vh;">
+      <!-- 人物（右寄せ。主役は結果なので、少し引く） -->
+      <div class="absolute inset-y-0 right-0 w-[32%] min-h-full hidden md:block">
+        <img
+          src="./{{ img_src }}"
+          alt="key visual"
+          class="h-full w-full object-contain object-[65%_20%] opacity-80"
+        />
+        <div class="absolute inset-0 bg-gradient-to-l from-zinc-950/40 via-zinc-950/60 to-zinc-950/85"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/35 via-transparent to-transparent"></div>
+      </div>
+
+      <!-- モバイルは人物を薄い背景にする -->
+      <div class="absolute inset-0 md:hidden">
+        <img
+          src="./{{ img_src }}"
+          alt="key visual"
+          class="h-full w-full object-contain object-[60%_15%] opacity-35 blur-[1px]"
+        />
+        <div class="absolute inset-0 bg-zinc-950/65"></div>
+      </div>
+
+      {% block content %}{% endblock %}
+
+      <!-- 右下：広告枠（結果の邪魔をしない位置） -->
+      <aside class="relative hidden md:block">
+        <div class="absolute bottom-6 right-6 w-[300px] rounded-3xl bg-white/8 ring-1 ring-white/12 backdrop-blur-xl p-5">
+          <p class="text-sm font-semibold">広告（プレースホルダ）</p>
+          <p class="mt-2 text-xs text-zinc-200/80">結果の可読性を優先して、隅に固定。</p>
+          <div class="ad-slot mt-4 h-24 rounded-2xl bg-zinc-950/35 ring-1 ring-white/10 grid place-items-center text-xs text-zinc-200/70">
+            Ad Slot
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
