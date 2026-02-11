@@ -17,18 +17,18 @@ def test_generate_site_creates_files(tmp_path):
 
 
 def test_json_has_required_keys(tmp_path):
-    """data/{date}.json に global と signs の必須キー（summary, choices, next_step）がある。"""
+    """data/{date}.json に global と signs の必須キー（summary, advice）がある。"""
     generate_site(date_str="2026-02-10", out_dir=tmp_path)
     p = tmp_path / "data" / "2026-02-10.json"
     payload = json.loads(p.read_text(encoding="utf-8"))
     assert "date" in payload and payload["date"] == "2026-02-10"
     assert "global" in payload
-    assert {"summary", "choices", "next_step"} <= set(payload["global"].keys())
+    assert {"summary", "advice"} <= set(payload["global"].keys())
     assert "signs" in payload
     for sign in SIGNS:
         assert sign in payload["signs"], f"signs に {sign} がありません"
         s = payload["signs"][sign]
-        assert {"summary", "choices", "next_step"} <= set(s.keys()), f"{sign}: 必須キーが不足"
+        assert {"summary", "advice"} <= set(s.keys()), f"{sign}: 必須キーが不足"
 
 
 def test_html_has_meta_and_base(tmp_path):

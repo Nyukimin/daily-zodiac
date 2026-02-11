@@ -179,23 +179,21 @@ def build_global_fallback(date_key: str) -> Dict[str, Any]:
     if not arr:
         return {
             "summary": "今日は整えるほど前に進みやすい日。焦りは小さく切って扱うと安定する。",
-            "choices": ["先に片づけてから着手する", "まず一つだけ終わらせる", "迷うものは保留箱に逃がす"],
-            "next_step": "作業前に机の上を3分だけ整える"
+            "advice": "作業前に机の上を3分だけ整える"
         }
     idx = pick_index(date_key, "global", len(arr))
     return arr[idx]
 
 
 def build_sign_fallback(date_key: str, sign_key: str) -> Dict[str, Any]:
-    """日付・星座からフォールバックで {summary, choices, next_step} を生成。"""
+    """日付・星座からフォールバックで {summary, advice} を生成。"""
     patterns = load_patterns()
     sign_patterns = patterns.get("signs", {}).get(sign_key, [])
     if not sign_patterns:
         ja = SIGN_JA.get(sign_key, sign_key)
         return {
             "summary": f"{ja}の今日の要約（フォールバック）",
-            "choices": ["少し整える", "一歩引く", "まず確認する"],
-            "next_step": "机の上を1分だけ片付ける"
+            "advice": "机の上を1分だけ片付ける"
         }
     idx = pick_index(date_key, "sign:" + sign_key, len(sign_patterns))
     return sign_patterns[idx]
@@ -347,8 +345,7 @@ def generate_site(
         "sign": "aries",
         "sign_ja": SIGN_JA["aries"],
         "summary": payload["global"]["summary"],
-        "choices": payload["global"]["choices"],
-        "next_step": payload["global"]["next_step"],
+        "advice": payload["global"]["advice"],
     }
     write_index(out_root, date_key, preview_data)
 
@@ -359,8 +356,7 @@ def generate_site(
             "sign": sign,
             "sign_ja": SIGN_JA.get(sign, sign),
             "summary": s["summary"],
-            "choices": s["choices"],
-            "next_step": s["next_step"],
+            "advice": s["advice"],
         }
         write_sign_files(out_root, sign, data)
 

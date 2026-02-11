@@ -38,8 +38,7 @@ def main():
     print("\n[OK] LLM が正常に動作しました\n")
     print("【全体運のサンプル出力】")
     print(f"  要約: {result['summary']}")
-    print(f"  選択肢: {result['choices']}")
-    print(f"  次の一歩: {result['next_step']}")
+    print(f"  アドバイス: {result['advice']}")
     return 0
 
 

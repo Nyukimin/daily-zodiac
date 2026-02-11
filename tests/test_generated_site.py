@@ -64,12 +64,12 @@ def test_data_json_exists():
     assert "date" in payload and payload["date"] == date_str
     assert "generated_at_jst" in payload
     assert "global" in payload
-    assert "summary" in payload["global"] and "choices" in payload["global"] and "next_step" in payload["global"]
+    assert "summary" in payload["global"] and "advice" in payload["global"]
     assert "signs" in payload
     for sign in SIGNS:
         assert sign in payload["signs"], f"signs に {sign} がありません"
         s = payload["signs"][sign]
-        assert "summary" in s and "choices" in s and "next_step" in s
+        assert "summary" in s and "advice" in s
 
 
 def test_index_has_12_links():
