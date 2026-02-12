@@ -1,6 +1,13 @@
+# daily-zodiac 依存パッケージ
+# Python 3.11 推奨（flatlib / pyswisseph の Windows wheel は 3.11 まで）
+
 Jinja2>=3.1.0
 pytest>=8.0.0
 flatlib
 google-genai
 python-dotenv
 PyYAML>=6.0
+
+# --- Windows の場合 ---
+# flatlib が pyswisseph 2.08 を要求するが、wheel は 2.10.3.2 のみ。
+# conda + environment.yml 使用後、pip install flatlib --no-deps を実行すること。

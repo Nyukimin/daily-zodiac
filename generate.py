@@ -199,33 +199,52 @@ def build_sign_fallback(date_key: str, sign_key: str) -> Dict[str, Any]:
     return sign_patterns[idx]
 
 
-def try_build_from_engine(date_key: str) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
-    """占星術エンジン（flatlib）+ Gemini で生成。失敗時は raise してフォールバックへ。"""
+def try_build_from_engine(
+    date_key: str,
+    llm_scope: str | None = None,
+) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+    """占星術エンジン（flatlib）+ Gemini で生成。失敗時は raise してフォールバックへ。
+
+    llm_scope: "global" のとき全体運のみ LLM で生成、星座はフォールバック（テスト用）。
+    None または "all" で従来どおり全13回 LLM 呼び出し。
+    """
     from astro.engine import get_chart_data
     from astro.llm_formatter import format_with_llm
+
+    if llm_scope is None:
+        llm_scope = os.environ.get("LLM_SCOPE", "all")
 
     astro_data = get_chart_data(date_key)
     global_block = format_with_llm(astro_data, "global")
     if global_block is None:
         raise RuntimeError("LLM format failed for global")
     time.sleep(1)  # レート制限対策
+
     signs_block: Dict[str, Dict[str, Any]] = {}
-    for sign in SIGNS:
-        sign_ja = SIGN_JA.get(sign, sign)
-        block = format_with_llm(astro_data, sign, sign_ja)
-        if block is None:
-            raise RuntimeError(f"LLM format failed for {sign}")
-        signs_block[sign] = block
-        time.sleep(1)  # レート制限対策
+    if llm_scope == "global":
+        for sign in SIGNS:
+            signs_block[sign] = build_sign_fallback(date_key, sign)
+    else:
+        for sign in SIGNS:
+            sign_ja = SIGN_JA.get(sign, sign)
+            block = format_with_llm(astro_data, sign, sign_ja)
+            if block is None:
+                raise RuntimeError(f"LLM format failed for {sign}")
+            signs_block[sign] = block
+            time.sleep(1)  # レート制限対策
     return (global_block, signs_block)
 
 
-def build_daily_payload(date_key: str, generated_at_jst_iso: str) -> Dict[str, Any]:
+def build_daily_payload(
+    date_key: str,
+    generated_at_jst_iso: str,
+    llm_scope: str | None = None,
+) -> Dict[str, Any]:
     """日付キーから1日分のpayload（global + signs）を組む。エンジン失敗時はフォールバック。"""
     global_block: Dict[str, Any]
     signs_block: Dict[str, Dict[str, Any]] = {}
     try:
-        global_block, signs_block = try_build_from_engine(date_key)
+        global_block, signs_block = try_build_from_engine(date_key, llm_scope)
     except Exception:
         global_block = build_global_fallback(date_key)
         for sign in SIGNS:
@@ -315,16 +334,21 @@ def write_json(payload: Dict[str, Any], path: Path) -> None:
 def generate_site(
     date_str: str | None = None,
     out_dir: str | Path = "site",
+    llm_scope: str | None = None,
 ) -> None:
-    """日次占いサイトを生成する。"""
+    """日次占いサイトを生成する。
+
+    llm_scope: "global" のとき全体運のみ LLM、星座はフォールバック（LLM_SCOPE 環境変数でも指定可）。
+    """
     now = get_now_jst()
     date_key = date_str if date_str is not None else get_date_key_jst(now)
     generated_at = now.isoformat()
+    scope = llm_scope if llm_scope is not None else os.environ.get("LLM_SCOPE")
 
     out_root = Path(out_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
-    payload = build_daily_payload(date_key, generated_at)
+    payload = build_daily_payload(date_key, generated_at, scope)
 
     (out_root / "data").mkdir(parents=True, exist_ok=True)
     write_json(payload, out_root / "data" / f"{date_key}.json")

@@ -35,3 +35,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Git 一時ファイル（UTF-8 コミットメッセージ用）
+.git_commit_msg.txt

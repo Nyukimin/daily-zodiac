@@ -112,10 +112,10 @@ def test_utf8_meta_and_japanese_present():
 
 
 def test_index_has_grid_css_hook():
-    """入口HTMLに結果セクション（今日の全体運）が存在。"""
+    """入口HTMLに結果セクション（今日の恋愛運）が存在。"""
     site = _run_generate()
     html = (site / "index.html").read_text(encoding="utf-8")
-    assert "今日の全体運" in html, "結果セクションがありません"
+    assert "今日の恋愛運" in html, "結果セクションがありません"
 
 
 def test_pages_have_ad_placeholder():

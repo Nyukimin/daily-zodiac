@@ -79,7 +79,7 @@ def _build_system_instruction() -> str:
         strict = output.get("strict", True)
         if schema and isinstance(schema, dict):
             json_example = json.dumps(schema, ensure_ascii=False)
-            length_note = " summary は約200文字程度、advice は約200文字程度でそれぞれ出力してください。"
+            length_note = " summary は約100文字程度、advice は約150文字程度でそれぞれ出力してください。"
             if strict:
                 parts.append(f"必ず次の JSON 形式のみで応答してください（他に説明は不要）。{length_note} 形式: {json_example}")
             else:
@@ -279,7 +279,7 @@ def _build_global_prompt(astro_data: Dict[str, Any]) -> str:
 太陽: {sun}、月: {moon}、月相: {moon_phase}
 惑星: {json.dumps(planets, ensure_ascii=False)}
 
-この日の全体の雰囲気・エネルギーに基づいて、今日の占い（要約・アドバイス）を JSON で出力してください。"""
+この日の天体配置に基づいて、今日の恋愛占い（要約・アドバイス）を JSON で出力してください。"""
 
 
 def _build_sign_prompt(
@@ -298,7 +298,7 @@ def _build_sign_prompt(
 太陽: {sun}、月: {moon}、月相: {moon_phase}
 惑星: {json.dumps(planets, ensure_ascii=False)}
 
-{sign_ja}（太陽が{sign}にある人）向けの今日の占い（要約・アドバイス）を、上記の天体配置を踏まえて JSON で出力してください。"""
+{sign_ja}（太陽が{sign}にある人）向けの今日の恋愛占い（要約・アドバイス）を、上記の天体配置を踏まえて JSON で出力してください。"""
 
 
 def _parse_json_response(text: str) -> Dict[str, Any] | None:

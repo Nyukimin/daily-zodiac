@@ -1,0 +1,21 @@
+# Conda 環境定義（flatlib 用 Python 3.11）
+# flatlib は pyswisseph 2.08 を要求するが、Windows wheel は 2.10.3.2 のみのため
+# flatlib は別途 --no-deps でインストールする。
+# 使い方:
+#   conda env create -f environment.yml
+#   conda activate daily-zodiac
+#   pip install flatlib --no-deps
+
+name: daily-zodiac
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - pyswisseph==2.10.3.2
+    - Jinja2>=3.1.0
+    - pytest>=8.0.0
+    - google-genai
+    - python-dotenv
+    - PyYAML>=6.0
